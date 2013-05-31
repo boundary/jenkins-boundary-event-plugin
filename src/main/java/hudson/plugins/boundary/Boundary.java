@@ -25,6 +25,9 @@ import hudson.model.BuildListener;
 import hudson.model.AbstractBuild;
 import hudson.model.Hudson;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
 import org.apache.commons.httpclient.Credentials;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.NameValuePair;
@@ -61,19 +64,38 @@ public class Boundary
 
         HashMap<String, Object> event = new HashMap<String, Object>();
 
-        event.put("fingerprintFields", Arrays.asList(new String[]{"@title", "build number"}));
+        event.put("fingerprintFields", Arrays.asList(new String[]{"build name"}));
 
         Map<String, String> source = new HashMap<String, String>();
-        source.put("ref", "jenkins");
-        source.put("type", "build server");
+        String hostname = "localhost";
+
+        try {
+            hostname = java.net.InetAddress.getLocalHost().getHostName();
+        }
+        catch(UnknownHostException e) {
+            System.out.println("host lookup exception: " + e);
+        }
+
+        source.put("ref", hostname);
+        source.put("type", "jenkins");
         event.put("source", source);
 
         Map<String, String> properties = new HashMap<String, String>();
-        properties.put("status", build.getResult().toString());
+        properties.put("build status", build.getResult().toString());
         properties.put("build number", build.getDisplayName());
+        properties.put("build name", build.getProject().getName());
         event.put("properties", properties);
 
-        event.put("title", String.format("Jenkins Build Job - %s", build.getProject().getName()));
+        event.put("title", String.format("Jenkins Build Job - %s - %s", build.getProject().getName(), build.getDisplayName()));
+
+        if ( build.getResult().toString() == "SUCCESS" ) {
+            event.put("severity", "INFO");
+            event.put("status", "CLOSED");
+        }
+        else {
+            event.put("severity", "WARN");
+            event.put("status", "OPEN");
+        }
 
         ObjectMapper mapper = new ObjectMapper();
         String jsonOutput = new String();
