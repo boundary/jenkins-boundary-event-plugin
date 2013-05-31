@@ -61,7 +61,7 @@ public class Boundary
 
         HashMap<String, Object> event = new HashMap<String, Object>();
 
-        event.put("fingerprintFields", Arrays.asList(new String[]{build.getProject().getName(), "Jenkins Build", build.getDisplayName()}));
+        event.put("fingerprintFields", Arrays.asList(new String[]{"@title", "build number"}));
 
         Map<String, String> source = new HashMap<String, String>();
         source.put("ref", "jenkins");
