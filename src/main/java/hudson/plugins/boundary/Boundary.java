@@ -24,6 +24,7 @@ package hudson.plugins.boundary;
 import hudson.model.BuildListener;
 import hudson.model.AbstractBuild;
 import hudson.model.Hudson;
+import hudson.model.Result;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -88,7 +89,7 @@ public class Boundary
 
         event.put("title", String.format("Jenkins Build Job - %s - %s", build.getProject().getName(), build.getDisplayName()));
 
-        if ( build.getResult().toString() == "SUCCESS" ) {
+        if (Result.SUCCESS.equals(build.getResult())) {
             event.put("severity", "INFO");
             event.put("status", "CLOSED");
         }
