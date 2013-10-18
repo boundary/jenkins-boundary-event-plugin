@@ -17,8 +17,8 @@
     <url>http://boundary.com</url>
     <scm>
         <connection>scm:git:git://github.com/boundary/jenkins-boundary-event-plugin.git</connection>
-        <developerConnection>scm:git:git@github.com:boundary/jenkins-boundary-event-plugin</developerConnection>
-        <url>http://github.com/boundary/jenkins-boundary-event-plugin</url>
+        <developerConnection>scm:git:git@github.com:boundary/jenkins-boundary-event-plugin.git</developerConnection>
+        <url>https://github.com/boundary/jenkins-boundary-event-plugin</url>
     </scm>
     <build>
         <plugins>
