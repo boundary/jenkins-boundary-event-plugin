@@ -11,7 +11,7 @@
     </parent>
     <artifactId>boundary-event</artifactId>
     <packaging>hpi</packaging>
-    <version>0.2</version>
+    <version>0.2-SNAPSHOT</version>
     <name>Jenkins Boundary Event Plugin</name>
     <description>Creates Boundary Event for your build jobs</description>
     <url>http://boundary.com</url>
