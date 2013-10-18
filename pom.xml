@@ -11,7 +11,7 @@
     </parent>
     <artifactId>boundary-event</artifactId>
     <packaging>hpi</packaging>
-    <version>0.2-SNAPSHOT</version>
+    <version>0.2</version>
     <name>Jenkins Boundary Event Plugin</name>
     <description>Creates Boundary Event for your build jobs</description>
     <url>http://boundary.com</url>
@@ -19,7 +19,8 @@
         <connection>scm:git:git://github.com/boundary/jenkins-boundary-event-plugin.git</connection>
         <developerConnection>scm:git:git@github.com:boundary/jenkins-boundary-event-plugin.git</developerConnection>
         <url>https://github.com/boundary/jenkins-boundary-event-plugin</url>
-    </scm>
+      <tag>boundary-event-0.2</tag>
+  </scm>
     <build>
         <plugins>
             <plugin>
