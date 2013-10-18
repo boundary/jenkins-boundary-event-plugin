@@ -21,22 +21,15 @@
 
 package hudson.plugins.boundary;
 
-import com.google.common.base.Splitter;
-
 import hudson.Extension;
 import hudson.Launcher;
-
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.BuildListener;
-import hudson.model.Result;
-import hudson.model.User;
-
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.BuildStepMonitor;
 import hudson.tasks.Notifier;
 import hudson.tasks.Publisher;
-
 import org.kohsuke.stapler.DataBoundConstructor;
 
 import java.io.IOException;
@@ -45,8 +38,6 @@ public class BoundaryEvent extends Notifier {
 
     public final String apiId;
     public final String apiToken;
-    private String json;
-    private transient Boundary boundary;
 
     @DataBoundConstructor
     public BoundaryEvent(String apiId, String apiToken) {
@@ -58,18 +49,16 @@ public class BoundaryEvent extends Notifier {
         return BuildStepMonitor.BUILD;
     }
 
-    private void initializeBoundary()
-            throws IOException {
-        if (boundary == null) {
-            boundary = new Boundary(this.apiId, this.apiToken);
-        }
-    }
-
     @Override
     public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener)
             throws InterruptedException, IOException {
-        System.out.println("Initializing plugin with: " + this.apiId + ", " + this.apiToken);
-        new Boundary(this.apiId, this.apiToken).sendEvent(build);
+        listener.getLogger().println("Initializing Boundary Event plugin: Organization = " + this.apiId);
+        try {
+            new Boundary(this.apiId, this.apiToken).sendEvent(build, listener);
+        } catch (IOException e) {
+            listener.getLogger().println("Failed to send Boundary event: " + e);
+            e.printStackTrace(listener.getLogger());
+        }
         return true;
     }
 

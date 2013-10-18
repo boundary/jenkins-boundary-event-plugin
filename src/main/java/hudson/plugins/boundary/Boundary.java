@@ -21,67 +21,65 @@
 
 package hudson.plugins.boundary;
 
-import hudson.model.BuildListener;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import hudson.model.AbstractBuild;
-import hudson.model.Hudson;
+import hudson.model.BuildListener;
 import hudson.model.Result;
+import org.apache.commons.codec.binary.Base64;
 
-import java.net.InetAddress;
+import javax.net.ssl.HttpsURLConnection;
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.net.UnknownHostException;
-
-import org.apache.commons.httpclient.Credentials;
-import org.apache.commons.httpclient.HttpClient;
-import org.apache.commons.httpclient.NameValuePair;
-import org.apache.commons.httpclient.UsernamePasswordCredentials;
-import org.apache.commons.httpclient.auth.AuthScope;
-import org.apache.commons.httpclient.methods.PostMethod;
-
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.ArrayList;
-import org.codehaus.jackson.map.ObjectMapper;
-
-import java.io.IOException;
 
 public class Boundary
 {
-    private final String BOUNDARY_URI = "https://api.boundary.com/";
-    private HttpClient client;
-    private String id;
-    private String token;
-    private String body;
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private final String id;
+    private final String token;
 
-    public Boundary() {}
-
-    public Boundary( String id, String token )
+    public Boundary(String id, String token)
     {
         this.id = id;
         this.token = token;
     }
 
-    public void sendEvent(AbstractBuild<?, ?> build)
-    {
+    private static void close(Closeable closeable) {
+        if (closeable != null) {
+            try {
+                closeable.close();
+            } catch (IOException e) {
+                // Ignore
+            }
+        }
+    }
 
-        HashMap<String, Object> event = new HashMap<String, Object>();
+    public void sendEvent(AbstractBuild<?, ?> build, BuildListener listener) throws IOException {
+        final HashMap<String, Object> event = new HashMap<String, Object>();
+        event.put("fingerprintFields", Arrays.asList("build name"));
 
-        event.put("fingerprintFields", Arrays.asList(new String[]{"build name"}));
-
-        Map<String, String> source = new HashMap<String, String>();
+        final Map<String, String> source = new HashMap<String, String>();
         String hostname = "localhost";
 
         try {
             hostname = java.net.InetAddress.getLocalHost().getHostName();
         }
         catch(UnknownHostException e) {
-            System.out.println("host lookup exception: " + e);
+            listener.getLogger().println("host lookup exception: " + e);
         }
 
         source.put("ref", hostname);
         source.put("type", "jenkins");
         event.put("source", source);
 
-        Map<String, String> properties = new HashMap<String, String>();
+        final Map<String, String> properties = new HashMap<String, String>();
         properties.put("build status", build.getResult().toString());
         properties.put("build number", build.getDisplayName());
         properties.put("build name", build.getProject().getName());
@@ -98,46 +96,39 @@ public class Boundary
             event.put("status", "OPEN");
         }
 
-        ObjectMapper mapper = new ObjectMapper();
-        String jsonOutput = new String();
+        final String url = String.format("https://api.boundary.com/%s/events", this.id);
+        final HttpsURLConnection conn = (HttpsURLConnection) new URL(url).openConnection();
+        conn.setConnectTimeout(30000);
+        conn.setReadTimeout(30000);
+        conn.setRequestMethod("POST");
+        conn.setRequestProperty("Content-Type", "application/json");
+        final String authHeader = "Basic " + new String(Base64.encodeBase64((token + ":").getBytes(), false));
+        conn.setRequestProperty("Authorization", authHeader);
+        conn.setDoInput(true);
+        conn.setDoOutput(true);
 
+        InputStream is = null;
+        OutputStream os = null;
         try {
-            jsonOutput = mapper.writeValueAsString(event);
-            System.out.println(jsonOutput);
+            os = conn.getOutputStream();
+            OBJECT_MAPPER.writeValue(os, event);
+            os.flush();
+            is = conn.getInputStream();
+        } finally {
+            close(is);
+            close(os);
         }
-        catch(IOException ioe) {
-            System.out.println("json error: " + ioe);
+
+        final int responseCode = conn.getResponseCode();
+        if (responseCode != HttpURLConnection.HTTP_CREATED) {
+            listener.getLogger().println("Invalid HTTP response code from Boundary API: " + responseCode);
         }
-
-        createClient(  );
-
-        PostMethod post = new PostMethod( BOUNDARY_URI + id + "/" + "events");
-
-        post.addRequestHeader("Content-Type", "application/json");
-        post.setRequestBody( jsonOutput );
-
-        try
-            {
-                System.out.println(client.executeMethod( post ));
+        else {
+            String location = conn.getHeaderField("Location");
+            if (location.startsWith("http:")) {
+                location = "https" + location.substring(4);
             }
-
-        catch ( Exception e )
-            {
-                System.out.println( "Unable to send message to Boundary API: \n" + e);
-            }
-
-        finally
-            {
-                post.releaseConnection(  );
-            }
-    }
-
-    private void createClient(  )
-    {
-        client = new HttpClient(  );
-
-        Credentials defaultcreds = new UsernamePasswordCredentials( token, "" );
-        client.getState(  ).setCredentials( AuthScope.ANY, defaultcreds );
-        client.getParams(  ).setAuthenticationPreemptive( true );
+            listener.getLogger().println("Created Boundary Event: " + location);
+        }
     }
 }
